@@ -1,0 +1,83 @@
+﻿@page "/user-profile"
+@attribute [Authorize]
+
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IHttpClientFactory ClientFactory
+
+<h3>User profile</h3>
+
+<AuthorizeView>
+    <Authorized>
+        @if (_isLoading)
+        {
+            <p>Loading profile...</p>
+        }
+        else if (!string.IsNullOrEmpty(_error))
+        {
+            <p class="text-danger">@_error</p>
+        }
+        else if (_me.HasValue)
+        {
+            <dl>
+                <dt>Name</dt>
+                <dd>@GetProp("displayName")</dd>
+
+                <dt>Email</dt>
+                <dd>@(GetProp("mail") ?? GetProp("userPrincipalName"))</dd>
+
+                <dt>Job title</dt>
+                <dd>@GetProp("jobTitle")</dd>
+            </dl>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>Please sign in to view your profile.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private JsonElement? _me;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("GraphAPI"); // uses AddGraphClient
+            var response = await client.GetAsync("me");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = $"Graph returned {(int)response.StatusCode} {response.ReasonPhrase}";
+            }
+            else
+            {
+                _me = await response.Content.ReadFromJsonAsync<JsonElement>();
+            }
+        }
+        catch (AccessTokenNotAvailableException ex)
+        {
+            // This is your "token_refresh_required" path – redirect to login/consent
+            ex.Redirect();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string? GetProp(string name)
+    {
+        if (_me is not JsonElement me) return null;
+        return me.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null
+            ? p.GetString()
+            : null;
+    }
+}

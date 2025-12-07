@@ -1,0 +1,23 @@
+﻿# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code / VS
+.vs/
+.vscode/
+
+# Logs
+*.log
+
+# Publish output (optional: we don't need to store this)
+*/bin/Release/net*/publish/
+
+# Secrets (if any)
+secrets.json
+appsettings.*.local.json
